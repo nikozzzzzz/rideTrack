@@ -1,0 +1,171 @@
+/* 
+  Localizable.strings
+  rideTrack - Russian
+  
+  Created by Nikos Papadopulos on 19/07/25.
+*/
+
+// MARK: - Activity Type
+//"runningActivity" = "Бег"
+//"cyclingActivity" = "Велосипед"
+//"motorcycleActivity" = "Мотоцикл"
+//"winterSkiingActivity" = "Горные лыжи"
+//"walkingActivity" = "Ходьба"
+
+// MARK: - Tab Bar
+"dashboard" = "Панель";
+"new_ride" = "Новая поездка";
+"current_ride" = "Текущая поездка";
+"profile" = "Профиль";
+"settings" = "Настройки";
+
+// MARK: - Dashboard
+"recent_rides" = "Недавние поездки";
+"no_rides_yet" = "Пока нет поездок";
+"start_first_ride" = "Начните свою первую поездку во вкладке 'Новая поездка'";
+"search_rides" = "Поиск поездок...";
+"all_rides" = "Все поездки";
+"this_week" = "На этой неделе";
+"this_month" = "В этом месяце";
+"this_year" = "В этом году";
+"all" = "Все";
+"total_time" = "Общее время";
+"total_rides" = "Всего поездок";
+"total_distance" = "Общая дистанция";
+
+// MARK: - New Ride
+"select_activity" = "Выберите активность";
+"choose_activity_type" = "Выберите тип активности для начала отслеживания";
+"ride_title" = "Название поездки";
+"optional_title" = "Необязательное название для вашей поездки";
+"location_permission_required" = "Требуется разрешение на геолокацию";
+"location_permission_message" = "RideTrack нужен доступ к геолокации для отслеживания ваших поездок. Пожалуйста, включите разрешения на геолокацию в Настройках.";
+"open_settings" = "Открыть настройки";
+"cancel" = "Отмена";
+"start" = "Начать";
+"starting" = "Начинаем";
+//"rideTitle" = "Назвать активность";
+"optional" = "(опционально)";
+"custom_title" = "Впишите свое название";
+
+
+
+// MARK: - Activity Types
+"running" = "Бег";
+"cycling" = "Велосипед";
+"motorcycle" = "Мотоцикл";
+"skiing" = "Лыжи";
+"walking" = "Ходьба";
+
+// MARK: - Current Ride
+"started_at" = "Начато в";
+"paused" = "ПАУЗА";
+"distance" = "Расстояние";
+"duration" = "Продолжительность";
+"current_speed" = "Текущая скорость";
+"max_speed" = "Макс. скорость";
+"current_pace" = "Текущий темп";
+"avg_pace" = "Средний темп";
+"avg_speed" = "Средняя скорость";
+"pause" = "Пауза";
+"resume" = "Продолжить";
+"stop" = "Стоп";
+"stop_ride" = "Остановить поездку";
+"stop_ride_message" = "Вы уверены, что хотите остановить эту поездку? Ваш прогресс будет сохранен.";
+"no_active_ride" = "Нет активной поездки";
+"start_new_ride_from_tab" = "Начните новую поездку во вкладке 'Новая поездка'";
+
+// MARK: - Settings
+"preferences" = "Предпочтения";
+"units" = "Единицы";
+"language" = "Язык";
+"theme" = "Тема";
+"sync_data" = "Синхронизация и данные";
+"icloud_sync" = "Синхронизация iCloud";
+"sync_data_across_devices" = "Синхронизация данных между устройствами";
+"apple_health" = "Apple Health";
+"share_workouts_with_health" = "Делиться тренировками с приложением Здоровье";
+"export_data" = "Экспорт данных";
+"export_ride_data" = "Экспортировать данные поездок";
+"import_data" = "Импорт данных";
+"import_ride_data_from_file" = "Импортировать данные поездок из файла";
+"notifications" = "Уведомления";
+"ride_milestones_and_reminders" = "Достижения поездок и напоминания";
+"voice_announcements" = "Голосовые объявления";
+"audio_updates_during_rides" = "Аудио обновления во время поездок";
+"tracking" = "Отслеживание";
+"auto_start_tracking" = "Автозапуск отслеживания";
+"start_tracking_when_motion_detected" = "Начинать отслеживание при обнаружении движения";
+"auto_pause" = "Автопауза";
+"pause_when_stopped" = "Пауза при остановке";
+"about" = "О приложении";
+"version" = "Версия";
+"delete_all_data" = "Удалить все данные";
+"remove_all_rides_and_settings" = "Удалить все поездки и настройки";
+"delete_all_data_message" = "Это навсегда удалит все данные ваших поездок и настройки. Это действие нельзя отменить.";
+"delete_all" = "Удалить все";
+"user_profile" = "Профиль пользователя";
+"manage_your_account" = "Управление вашим аккаунтом";
+
+// MARK: - Units
+"metric" = "Метрическая";
+"imperial" = "Имперская";
+"metric_description" = "Метрическая (км, кг)";
+"imperial_description" = "Имперская (мили, фунты)";
+
+// MARK: - Common
+"ok" = "ОК";
+"done" = "Готово";
+"save" = "Сохранить";
+"edit" = "Редактировать";
+"delete" = "Удалить";
+"share" = "Поделиться";
+"close" = "Закрыть";
+"back" = "Назад";
+"next" = "Далее";
+"previous" = "Предыдущий";
+"loading" = "Загрузка...";
+"error" = "Ошибка";
+"success" = "Успех";
+"warning" = "Предупреждение";
+"info" = "Информация";
+
+// MARK: - Profile
+"profile_title" = "Профиль";
+"profile_checking_status" = "Проверка статуса iCloud...";
+"profile_unknown_user" = "Неизвестный пользователь";
+"profile_member_since" = "Участник с";
+"profile_last_sync" = "Последняя синхронизация:";
+"profile_refresh" = "Обновить";
+"profile_statistics" = "Статистика";
+"profile_total_rides" = "Всего поездок";
+"profile_total_distance" = "Общее расстояние";
+"profile_total_time" = "Общее время";
+"profile_activities" = "Активности";
+"profile_quick_actions" = "Быстрые действия";
+"profile_edit_profile" = "Редактировать профиль";
+"profile_sync_data" = "Синхронизировать данные";
+"profile_export_data" = "Экспорт данных";
+"profile_management" = "Управление аккаунтом";
+"profile_cloud_sync" = "Синхронизация iCloud";
+"profile_sign_out" = "Выйти из iCloud";
+"profile_not_signed_in" = "Не вошли в iCloud";
+"profile_sign_in_prompt" = "Войдите в iCloud, чтобы синхронизировать данные о поездках на всех устройствах и сохранить прогресс.";
+"profile_check_icloud" = "Проверить статус iCloud";
+"profile_open_settings" = "Открыть настройки";
+"profile_personal_info" = "Личная информация";
+"profile_first_name" = "Имя";
+"profile_last_name" = "Фамилия";
+"profile_email" = "Электронная почта";
+"profile_first_name_placeholder" = "Введите имя";
+"profile_last_name_placeholder" = "Введите фамилию";
+"profile_email_placeholder" = "Введите адрес электронной почты";
+"profile_preferences" = "Предпочтения";
+"profile_cloud_sync_description" = "Автоматически синхронизировать данные на всех устройствах, подключенных к одному аккаунту iCloud.";
+"profile_preferred_activities" = "Предпочитаемые активности";
+"profile_select_activities" = "Выбрать активности";
+"profile_selected" = "выбрано";
+"profile_activities_description" = "Выберите любимые активности для персонализации опыта.";
+"profile_data_sync" = "Синхронизация данных";
+"profile_saving" = "Сохранение профиля...";
+"profile_first_name_required" = "Имя обязательно";
