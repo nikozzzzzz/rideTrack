@@ -1,6 +1,7 @@
 # RideTrack iOS App
 
-A comprehensive sports tracking application built with SwiftUI, SwiftData, and CloudKit for iOS 18+. Track your running, cycling, motorcycle rides, skiing, and walking activities with real-time GPS tracking, detailed statistics, and cloud synchronization.
+A simplistic sports tracking application built with SwiftUI, SwiftData, and CloudKit for iOS 18+.
+Track your running, cycling, motorcycle rides, skiing, and walking activities with real-time GPS tracking, detailed statistics, and iCloud synchronization.
 
 ## Features
 
@@ -33,9 +34,9 @@ A comprehensive sports tracking application built with SwiftUI, SwiftData, and C
 - **Data Management**: Export/import functionality
 - **Privacy Controls**: Location and data sharing preferences
 
-## Technical Architecture
+##  Architecture
 
-### 🏗️ Modern iOS Development Stack
+### 🏗️ iOS Development Stack
 - **SwiftUI**: Declarative UI framework for iOS 18+
 - **SwiftData**: Core Data successor for data persistence
 - **CloudKit**: Apple's cloud database for data synchronization
@@ -60,7 +61,7 @@ rideTrack/
 ├── Services/              # Business logic services
 │   ├── LocationManager.swift    # GPS tracking service
 │   └── iCloudAuthManager.swift  # CloudKit authentication
-└── Localization/         # Multi-language support
+└── Localization/         # Multi-language translation files
     ├── LocalizationManager.swift
     ├── en.lproj/         # English strings
     ├── ru.lproj/         # Russian strings
@@ -187,7 +188,7 @@ The app supports 4 languages with complete localization:
 ### Technical Improvements
 - **Background Location Optimization**: Enhanced battery efficiency
 - **Data Export**: GPX, TCX, and CSV export formats
-- **Theme System**: Dark/light mode and custom themes
+- **Theme System**: Dark/light mode and custom themes (in the future)
 - **Unit Conversion**: Comprehensive metric/imperial support
 - **Conflict Resolution**: Advanced CloudKit sync handling
 
@@ -198,12 +199,13 @@ The app supports 4 languages with complete localization:
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+6. If you don't get any reply in 2-3 days, please, contact me on nikozzzzzz@gmail.com
 
 ### Development Guidelines
 - Follow Swift coding conventions
-- Add unit tests for new features
+- Add unit tests for new features if you can
 - Update localization files for UI changes
-- Test on multiple device sizes
+- Test on multiple device sizes if you have
 - Ensure CloudKit integration works properly
 
 ## License
@@ -223,12 +225,11 @@ This project uses the Apache 2.0 license, which allows:
 
 ### Contributing to Open Source
 
-When using this code:
+When using this project, please:
 1. **Keep Attribution**: Include the original copyright notice
 2. **Link Back**: Reference this original repository in your project
 3. **Share Improvements**: Consider contributing back improvements via pull requests
-4. **Follow License**: Comply with Apache 2.0 license terms
+4. **Follow License**: Comply with Apache 2.0 license terms... or don't, it is up to you
 
 This ensures the open-source community benefits while allowing commercial use.
 
-## Acknowledgments
