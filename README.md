@@ -232,18 +232,3 @@ When using this code:
 This ensures the open-source community benefits while allowing commercial use.
 
 ## Acknowledgments
-
-- **Apple**: For the excellent SwiftUI, SwiftData, and CloudKit frameworks
-- **MapKit**: For providing comprehensive mapping capabilities
-- **Core Location**: For accurate GPS tracking functionality
-- **Community**: For feedback and feature suggestions
-
-## Contact
-
-- **Developer**: Nikos Papadopulos
-- **Email**: [your-email@example.com]
-- **GitHub**: [https://github.com/yourusername]
-
----
-
-**RideTrack** - Track your adventures, one ride at a time! 🚴‍♂️🏃‍♀️🏍️⛷️🚶‍♂️
