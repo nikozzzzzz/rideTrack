@@ -169,3 +169,5 @@
 "profile_data_sync" = "Синхронизация данных";
 "profile_saving" = "Сохранение профиля...";
 "profile_first_name_required" = "Имя обязательно";
+
+"map" = "Карта";

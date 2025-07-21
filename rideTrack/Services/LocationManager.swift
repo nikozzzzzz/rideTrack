@@ -20,6 +20,7 @@ class LocationManager: NSObject, ObservableObject {
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var currentLocation: CLLocation?
     @Published var currentSpeed: Double = 0.0
+    @Published var currentAltitude: Double = 0.0
     @Published var isTracking = false
     @Published var isPaused = false
     
@@ -105,6 +106,17 @@ class LocationManager: NSObject, ObservableObject {
         print("Stopped location tracking")
     }
     
+    func startUpdating() {
+        guard isLocationPermissionGranted else { return }
+        locationManager.startUpdatingLocation()
+    }
+    
+    func stopUpdating() {
+        if !isTracking {
+            locationManager.stopUpdatingLocation()
+        }
+    }
+    
     private func shouldRecordLocation(_ location: CLLocation) -> Bool {
         // Filter out inaccurate readings
         guard location.horizontalAccuracy <= 50 else {
@@ -146,6 +158,7 @@ class LocationManager: NSObject, ObservableObject {
         // Update current values
         currentLocation = location
         currentSpeed = max(0, location.speed)
+        currentAltitude = location.altitude
         lastLocationUpdate = Date()
         
         // Save context
@@ -170,7 +183,8 @@ extension LocationManager: CLLocationManagerDelegate {
                 // Still update current location for UI purposes
                 self.currentLocation = location
                 self.currentSpeed = max(0, location.speed)
-            }
+                self.currentAltitude = location.altitude
+             }
         }
     }
     
@@ -201,12 +215,13 @@ extension LocationManager: CLLocationManagerDelegate {
             case .denied, .restricted:
                 print("Location authorization denied/restricted")
                 self.stopTracking()
-            case .authorizedWhenInUse:
-                print("Location authorized when in use")
-            case .authorizedAlways:
-                print("Location authorized always")
+            case .authorizedWhenInUse, .authorizedAlways:
+                print("Location authorized")
+                self.startUpdating()
             @unknown default:
-                print("Unknown location authorization status")
+                print("Location authorized always")
+            //@unknown default:
+             //   print("Unknown location authorization status")
             }
         }
     }

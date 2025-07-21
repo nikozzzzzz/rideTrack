@@ -53,6 +53,13 @@ struct MainTabView: View {
 //                }
 //                .tag(3)
             
+            MapView()
+                .tabItem {
+                    Image(systemName: "map.fill")
+                    Text(LocalizationKeys.map.localized)
+                }
+                .tag(3)
+            
             SettingsView()
                 .tabItem {
                     Image(systemName: "gearshape.fill")

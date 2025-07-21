@@ -81,12 +81,6 @@ extension String {
 // MARK: - Localization Keys
 struct LocalizationKeys {
     
-    // MARK: - Activity Type
-//    static let running = "runningActivity"
-//    static let cycling = "cyclingActivity"
-//    static let motorcycle = "motorcycleActivity"
-//    static let winterSkiing = "winterSkiingActivity"
-//    static let walking = "walkingActivity"
     // MARK: - Tab Bar
     static let dashboard = "dashboard"
     static let newRide = "new_ride"
@@ -146,7 +140,10 @@ struct LocalizationKeys {
     static let stopRideMessage = "stop_ride_message"
     static let noActiveRide = "no_active_ride"
     static let startNewRideFromTab = "start_new_ride_from_tab"
-    
+
+    // MARK: - Map
+    static let map = "map"
+
     // MARK: - Settings
     static let preferences = "preferences"
     static let units = "units"

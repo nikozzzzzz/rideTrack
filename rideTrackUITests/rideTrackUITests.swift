@@ -23,19 +23,64 @@ final class rideTrackUITests: XCTestCase {
     }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    func testMainNavigation() throws {
         let app = XCUIApplication()
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        // Verify Dashboard tab exists and is the default
+        XCTAssertTrue(app.tabBars.buttons["Dashboard"].exists)
+        XCTAssertTrue(app.navigationBars["Dashboard"].exists)
+
+        // Navigate to New Ride tab
+        app.tabBars.buttons["New Ride"].tap()
+        XCTAssertTrue(app.navigationBars["New Ride"].exists)
+
+        // Navigate to Settings tab
+        app.tabBars.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].exists)
     }
 
     @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
-        }
+    func testNewRideCreation() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // Navigate to New Ride tab
+        app.tabBars.buttons["New Ride"].tap()
+
+        // Select an activity
+        app.buttons["Cycling"].tap()
+
+        // Enter a custom title
+        let titleTextField = app.textFields["Custom Title..."]
+        XCTAssertTrue(titleTextField.exists)
+        titleTextField.tap()
+        titleTextField.typeText("Morning Ride")
+
+        // Start the ride
+        app.buttons["Start Cycling"].tap()
+
+        // Verify that the current ride tab appears and is selected
+        let currentRideTab = app.tabBars.buttons["Current Ride"]
+        XCTAssertTrue(currentRideTab.waitForExistence(timeout: 5))
+
+    @MainActor
+    func testProfileView() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // Navigate to Settings tab
+        app.tabBars.buttons["Settings"].tap()
+
+        // Navigate to Profile View
+        app.tables.cells.staticTexts["User Profile"].tap()
+
+        // Verify that the profile view is displayed
+        XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
+    }
+        XCTAssertTrue(currentRideTab.isSelected)
+
+        // Verify that the current ride view is displayed
+        XCTAssertTrue(app.staticTexts["Current Ride"].exists)
     }
 }

@@ -160,3 +160,5 @@
 "profile_data_sync" = "Data Synchronization";
 "profile_saving" = "Saving profile...";
 "profile_first_name_required" = "First name is required";
+
+"map" = "Map";
