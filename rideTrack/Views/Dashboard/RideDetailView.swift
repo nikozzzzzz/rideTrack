@@ -17,10 +17,10 @@ struct DetailMapAnnotationItem: Identifiable {
 
 struct RideDetailView: View {
     let session: RideSession
-    @State private var region = MKCoordinateRegion()
     @State private var showingDeleteAlert = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @State private var mapCameraPosition: MapCameraPosition = .automatic
     
     var detailAnnotations: [DetailMapAnnotationItem] {
         var items: [DetailMapAnnotationItem] = []
@@ -77,32 +77,35 @@ struct RideDetailView: View {
                             .font(.headline)
                             .padding(.horizontal)
                         
-                        Map(coordinateRegion: .constant(region), annotationItems: detailAnnotations) { item in
-                            MapAnnotation(coordinate: item.coordinate) {
-                                VStack {
-                                    Circle()
-                                        .fill(item.color)
-                                        .frame(width: 12, height: 12)
-                                        .overlay(
-                                            Circle()
-                                                .stroke(.white, lineWidth: 2)
-                                        )
-                                    Text(item.label)
-                                        .font(.caption2)
-                                        .fontWeight(.medium)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(item.color)
-                                        .foregroundColor(.white)
-                                        .cornerRadius(4)
+                        Map(position: $mapCameraPosition) {
+                            MapPolyline(coordinates: session.locationPoints.map { $0.coordinate })
+                                .stroke(.blue, lineWidth: 4)
+                            
+                            ForEach(detailAnnotations) { item in
+                                Annotation(item.label, coordinate: item.coordinate) {
+                                    VStack(spacing: 4) {
+                                        Circle()
+                                            .fill(item.color)
+                                            .frame(width: 12, height: 12)
+                                            .overlay(
+                                                Circle().stroke(Color.white, lineWidth: 2)
+                                            )
+                                        
+                                        Text(item.label)
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.black.opacity(0.6))
+                                            .foregroundColor(.white)
+                                            .cornerRadius(4)
+                                    }
                                 }
                             }
                         }
-                        .overlay(
-                            PolylineOverlay(coordinates: session.locationPoints.map { $0.coordinate })
-                        )
-                        .frame(height: 250)
+                        .frame(height: 300)
                         .cornerRadius(12)
+                        .onAppear(perform: calculateMapCameraPosition)
                     }
                 }
                 
@@ -185,6 +188,12 @@ struct RideDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
+                    ShareLink(
+                        item: RideExportData(session: session),
+                        preview: SharePreview("Exported Ride Data", icon: "figure.run.circle")
+                    ) {
+                        Label("Export Ride", systemImage: "square.and.arrow.up")
+                    }
                     Button("Delete Ride", role: .destructive) {
                         showingDeleteAlert = true
                     }
@@ -201,33 +210,25 @@ struct RideDetailView: View {
         } message: {
             Text("Are you sure you want to delete this ride? This action cannot be undone.")
         }
-        .onAppear {
-            calculateMapRegion()
-        }
     }
     
-    private func calculateMapRegion() {
+    private func calculateMapCameraPosition() {
         guard !session.locationPoints.isEmpty else { return }
-        
         let coordinates = session.locationPoints.map { $0.coordinate }
-        let minLat = coordinates.map { $0.latitude }.min() ?? 0
-        let maxLat = coordinates.map { $0.latitude }.max() ?? 0
-        let minLon = coordinates.map { $0.longitude }.min() ?? 0
-        let maxLon = coordinates.map { $0.longitude }.max() ?? 0
         
-        let center = CLLocationCoordinate2D(
-            latitude: (minLat + maxLat) / 2,
-            longitude: (minLon + maxLon) / 2
-        )
+        let minLat = coordinates.map(\.latitude).min()!
+        let maxLat = coordinates.map(\.latitude).max()!
+        let minLon = coordinates.map(\.longitude).min()!
+        let maxLon = coordinates.map(\.longitude).max()!
         
-        let span = MKCoordinateSpan(
-            latitudeDelta: max(maxLat - minLat, 0.01) * 1.3,
-            longitudeDelta: max(maxLon - minLon, 0.01) * 1.3
-        )
+        let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2)
+        let span = MKCoordinateSpan(latitudeDelta: (maxLat - minLat) * 1.4, longitudeDelta: (maxLon - minLon) * 1.4)
         
-        region = MKCoordinateRegion(center: center, span: span)
+        let region = MKCoordinateRegion(center: center, span: span)
+        
+        self.mapCameraPosition = .region(region)
     }
-    
+
     private func deleteRide() {
         modelContext.delete(session)
         dismiss()

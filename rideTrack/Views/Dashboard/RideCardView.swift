@@ -108,7 +108,7 @@ struct MapAnnotationItem: Identifiable {
     let color: Color
 }
 
-struct PolylineOverlay: View {
+struct RidePathPreviewOverlay: View {
     let coordinates: [CLLocationCoordinate2D]
     
     var body: some View {
@@ -151,7 +151,7 @@ struct MapPreviewView: View {
         }
         .overlay(
             // Add polyline as overlay since MapPolyline might not be available
-            PolylineOverlay(coordinates: locationPoints.map { $0.coordinate })
+            RidePathPreviewOverlay(coordinates: locationPoints.map { $0.coordinate })
         )
         .disabled(true) // Disable interaction in preview
         .onAppear {

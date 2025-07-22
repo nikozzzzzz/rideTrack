@@ -13,10 +13,7 @@ import CoreLocation
 struct CurrentRideView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var activeSessions: [RideSession]
-    @State private var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-    )
+    @State private var mapCameraPosition: MapCameraPosition = .automatic
     @State private var showingStopAlert = false
     @State private var currentTime = Date()
     @State private var timer: Timer?
@@ -50,21 +47,23 @@ struct CurrentRideView: View {
                 VStack(spacing: 0) {
                     // Map View - 40% of screen height
                     ZStack(alignment: .topTrailing) {
-                        Map(coordinateRegion: $region, showsUserLocation: true, userTrackingMode: .constant(.follow), annotationItems: mapAnnotations) { item in
-                            MapAnnotation(coordinate: item.coordinate) {
-                                Circle()
-                                    .fill(item.color)
-                                    .frame(width: 10, height: 10)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(.white, lineWidth: 2)
-                                    )
+                        Map(position: $mapCameraPosition, interactionModes: .all) {
+                            UserAnnotation()
+                            
+                            MapPolyline(coordinates: session.locationPoints.map { $0.coordinate })
+                                .stroke(.blue, lineWidth: 4)
+                            
+                            ForEach(mapAnnotations) { item in
+                                Annotation("", coordinate: item.coordinate) {
+                                    Circle()
+                                        .fill(item.color)
+                                        .frame(width: 10, height: 10)
+                                        .overlay(
+                                            Circle().stroke(Color.white, lineWidth: 2)
+                                        )
+                                }
                             }
                         }
-                        .overlay(
-                            // Add polyline as overlay
-                            PolylineOverlay(coordinates: session.locationPoints.map { $0.coordinate })
-                        )
                         .ignoresSafeArea(edges: .top)
                         
                         // Map Controls
@@ -308,9 +307,12 @@ struct CurrentRideView: View {
     }
     
     private func centerOnUser() {
-        // Center map on user location
         if let userLocation = LocationManager.shared.currentLocation {
-            region.center = userLocation.coordinate
+            let region = MKCoordinateRegion(
+                center: userLocation.coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+            )
+            mapCameraPosition = .region(region)
         }
     }
     
