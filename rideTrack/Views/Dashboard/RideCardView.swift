@@ -108,20 +108,9 @@ struct MapAnnotationItem: Identifiable {
     let color: Color
 }
 
-struct RidePathPreviewOverlay: View {
-    let coordinates: [CLLocationCoordinate2D]
-    
-    var body: some View {
-        // Simple line representation for preview
-        Rectangle()
-            .fill(Color.blue.opacity(0.3))
-            .frame(height: 2)
-    }
-}
-
 struct MapPreviewView: View {
     let locationPoints: [LocationPoint]
-    @State private var region = MKCoordinateRegion()
+    @State private var mapCameraPosition: MapCameraPosition = .automatic
     
     var annotationItems: [MapAnnotationItem] {
         var items: [MapAnnotationItem] = []
@@ -138,47 +127,48 @@ struct MapPreviewView: View {
     }
     
     var body: some View {
-        Map(coordinateRegion: .constant(region), annotationItems: annotationItems) { item in
-            MapAnnotation(coordinate: item.coordinate) {
-                Circle()
-                    .fill(item.color)
-                    .frame(width: 8, height: 8)
-                    .overlay(
-                        Circle()
-                            .stroke(.white, lineWidth: 2)
-                    )
+        Map(position: $mapCameraPosition, interactionModes: []) {
+            MapPolyline(coordinates: locationPoints.map { $0.coordinate })
+                .stroke(.blue, lineWidth: 3)
+
+            ForEach(annotationItems) { item in
+                Annotation("", coordinate: item.coordinate) {
+                    Circle()
+                        .fill(item.color)
+                        .frame(width: 8, height: 8)
+                        .overlay(
+                            Circle().stroke(Color.white, lineWidth: 1)
+                        )
+                }
             }
         }
-        .overlay(
-            // Add polyline as overlay since MapPolyline might not be available
-            RidePathPreviewOverlay(coordinates: locationPoints.map { $0.coordinate })
-        )
-        .disabled(true) // Disable interaction in preview
-        .onAppear {
-            calculateRegion()
-        }
+        .onAppear(perform: setupCameraPosition)
     }
     
-    private func calculateRegion() {
-        guard !locationPoints.isEmpty else { return }
+    private func setupCameraPosition() {
+        guard let firstCoordinate = locationPoints.map({ $0.coordinate }).first else {
+            mapCameraPosition = .automatic
+            return
+        }
+
+        if locationPoints.count == 1 {
+            let region = MKCoordinateRegion(
+                center: firstCoordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+            )
+            mapCameraPosition = .region(region)
+            return
+        }
         
         let coordinates = locationPoints.map { $0.coordinate }
-        let minLat = coordinates.map { $0.latitude }.min() ?? 0
-        let maxLat = coordinates.map { $0.latitude }.max() ?? 0
-        let minLon = coordinates.map { $0.longitude }.min() ?? 0
-        let maxLon = coordinates.map { $0.longitude }.max() ?? 0
+        let mapRect = coordinates.reduce(MKMapRect.null) { (rect, coord) -> MKMapRect in
+            let point = MKMapPoint(coord)
+            return rect.union(MKMapRect(x: point.x, y: point.y, width: 0, height: 0))
+        }
+
+        let paddedRect = mapRect.insetBy(dx: -mapRect.size.width * 0.2, dy: -mapRect.size.height * 0.2)
         
-        let center = CLLocationCoordinate2D(
-            latitude: (minLat + maxLat) / 2,
-            longitude: (minLon + maxLon) / 2
-        )
-        
-        let span = MKCoordinateSpan(
-            latitudeDelta: max(maxLat - minLat, 0.01) * 1.2,
-            longitudeDelta: max(maxLon - minLon, 0.01) * 1.2
-        )
-        
-        region = MKCoordinateRegion(center: center, span: span)
+        mapCameraPosition = .rect(paddedRect)
     }
 }
 
