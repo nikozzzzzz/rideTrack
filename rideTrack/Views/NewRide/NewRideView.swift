@@ -14,6 +14,7 @@ struct NewRideView: View {
     @State private var selectedActivityType: ActivityType = .running
     @State private var customTitle: String = ""
     @State private var showingLocationPermissionAlert = false
+    @State private var showingBackgroundPermissionAlert = false
     @State private var isStartingRide = false
     
     init() {
@@ -111,6 +112,18 @@ struct NewRideView: View {
             } message: {
                 Text("RideTrack needs location permission to track your rides. Please enable location access in Settings.")
             }
+            .alert("Background Location Access", isPresented: $showingBackgroundPermissionAlert) {
+                Button("Settings") {
+                    if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(settingsUrl)
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    isStartingRide = false
+                }
+            } message: {
+                Text("To ensure your ride is tracked continuously, please allow background location access in Settings.")
+            }
         }
     }
     
@@ -127,7 +140,12 @@ struct NewRideView: View {
             locationManager.requestLocationPermission { granted in
                 DispatchQueue.main.async {
                     if granted {
-                        createAndStartRide()
+                        // After first grant, we might still be 'When In Use'
+                        if locationManager.authorizationStatus == .authorizedWhenInUse {
+                            showingBackgroundPermissionAlert = true
+                        } else {
+                            createAndStartRide()
+                        }
                     } else {
                         showingLocationPermissionAlert = true
                         isStartingRide = false
@@ -137,7 +155,18 @@ struct NewRideView: View {
         case .denied, .restricted:
             showingLocationPermissionAlert = true
             isStartingRide = false
-        case .authorizedWhenInUse, .authorizedAlways:
+        case .authorizedWhenInUse:
+            // Already authorized for 'When In Use', now ask for 'Always'
+            locationManager.requestLocationPermission { _ in
+                DispatchQueue.main.async {
+                    if locationManager.authorizationStatus == .authorizedAlways {
+                        createAndStartRide()
+                    } else {
+                        showingBackgroundPermissionAlert = true
+                    }
+                }
+            }
+        case .authorizedAlways:
             createAndStartRide()
         @unknown default:
             showingLocationPermissionAlert = true

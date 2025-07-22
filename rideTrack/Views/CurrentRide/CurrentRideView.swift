@@ -173,7 +173,7 @@ struct CurrentRideView: View {
                                     LiveMetricCard(
                                         title: "Avg Speed",
                                         value: session.formattedAverageSpeed,
-                                        icon: "speedometer.circle",
+                                        icon: "speedometer",
                                         color: .teal
                                     )
                                 }

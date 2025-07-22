@@ -10,6 +10,7 @@ import SwiftData
 
 @main
 struct rideTrackApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var localizationManager = LocalizationManager.shared
     
     var sharedModelContainer: ModelContainer = {
