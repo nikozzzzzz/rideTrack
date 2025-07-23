@@ -9,6 +9,7 @@ import Foundation
 import CoreLocation
 import SwiftData
 import UIKit
+import os.log
 
 class LocationManager: NSObject, ObservableObject {
     static let shared = LocationManager()
@@ -38,25 +39,41 @@ class LocationManager: NSObject, ObservableObject {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.distanceFilter = minimumDistanceFilter
-        locationManager.allowsBackgroundLocationUpdates = true
         locationManager.pausesLocationUpdatesAutomatically = false
         authorizationStatus = locationManager.authorizationStatus
+        
+        // Don't configure background location updates here - only when tracking starts
+        print("LocationManager setup completed with authorization: \(authorizationStatus.rawValue)")
     }
     
+    
     func requestLocationPermission(completion: @escaping (Bool) -> Void) {
-        if authorizationStatus == .notDetermined {
+        switch authorizationStatus {
+        case .notDetermined:
+            // First request "When In Use" permission
+            locationManager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse:
+            // If we have "When In Use", request "Always" for background tracking
             locationManager.requestAlwaysAuthorization()
+        case .authorizedAlways:
+            completion(true)
+            return
+        case .denied, .restricted:
+            completion(false)
+            return
+        @unknown default:
+            completion(false)
+            return
         }
         
-        // The completion can be called directly in the delegate method `didChangeAuthorization`
-        // For simplicity, we assume the user will grant it and update UI accordingly.
-        // A more robust solution might use a completion handler stored here.
-        completion(true) // Optimistically return true
+        // Store completion for delegate callback
+        // For now, optimistically return true
+        completion(true)
     }
     
     func startTracking(for session: RideSession, with context: ModelContext? = nil) {
         guard authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse else {
-            print("Location permission not granted")
+            print("❌ Location permission not granted")
             return
         }
         
@@ -65,7 +82,20 @@ class LocationManager: NSObject, ObservableObject {
         isTracking = true
         isPaused = false
         
+        // Configure location manager for high accuracy tracking
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter = minimumDistanceFilter
+        
+        // Enable background location updates ONLY if we have Always permission
+        if authorizationStatus == .authorizedAlways {
+            locationManager.allowsBackgroundLocationUpdates = true
+            print("✅ Background location updates enabled")
+        } else {
+            print("⚠️ Only 'When In Use' permission granted. Background tracking will not work.")
+        }
+        
         locationManager.startUpdatingLocation()
+        print("🚀 Started location tracking with authorization: \(authorizationStatus.rawValue)")
         
         // Check notification permission before showing tracking notification
         NotificationManager.shared.checkNotificationPermission { granted in
@@ -73,6 +103,14 @@ class LocationManager: NSObject, ObservableObject {
                 NotificationManager.shared.showTrackingNotification(activityType: session.activityType.displayName)
             }
             // If permission not granted, silently skip the notification
+        }
+        
+        // Start Live Activity if available
+        if #available(iOS 16.1, *) {
+            LiveActivityManager.shared.startLiveActivity(
+                rideType: session.activityType.displayName,
+                startLocation: nil
+            )
         }
         
         print("Started location tracking for session: \(session.id)")
@@ -108,7 +146,19 @@ class LocationManager: NSObject, ObservableObject {
         currentSession = nil
         
         locationManager.stopUpdatingLocation()
+        
+        // Disable background location updates when not tracking
+        if authorizationStatus == .authorizedAlways {
+            locationManager.allowsBackgroundLocationUpdates = false
+            print("Disabled background location updates")
+        }
+        
         NotificationManager.shared.hideTrackingNotification()
+        
+        // Stop Live Activity if available
+        if #available(iOS 16.1, *) {
+            LiveActivityManager.shared.stopLiveActivity()
+        }
         
         print("Stopped location tracking")
     }
@@ -168,6 +218,20 @@ class LocationManager: NSObject, ObservableObject {
         currentAltitude = location.altitude
         lastLocationUpdate = Date()
         
+        // Update Live Activity if available
+        if #available(iOS 16.1, *) {
+            let distance = session.totalDistance / 1000.0 // Convert to km
+            let duration = Date().timeIntervalSince(session.startTime)
+            let averageSpeed = duration > 0 ? (distance / (duration / 3600.0)) : 0.0
+            
+            LiveActivityManager.shared.updateLiveActivity(
+                distance: distance,
+                duration: duration,
+                averageSpeed: averageSpeed,
+                currentSpeed: max(0, location.speed) * 3.6 // Convert m/s to km/h
+            )
+        }
+        
         // Save context
         do {
             try context.save()
@@ -218,17 +282,26 @@ extension LocationManager: CLLocationManagerDelegate {
             
             switch status {
             case .notDetermined:
-                print("Location authorization not determined")
+                print("📍 Location authorization not determined")
             case .denied, .restricted:
-                print("Location authorization denied/restricted")
+                print("❌ Location authorization denied/restricted")
                 self.stopTracking()
-            case .authorizedWhenInUse, .authorizedAlways:
-                print("Location authorized")
+            case .authorizedWhenInUse:
+                print("📍 Location authorized: When In Use")
+                if self.isTracking {
+                    print("⚠️ Currently tracking but only have 'When In Use' permission")
+                }
+                self.startUpdating()
+            case .authorizedAlways:
+                print("✅ Location authorized: Always")
+                if self.isTracking {
+                    // Re-enable background location updates if we're currently tracking
+                    self.locationManager.allowsBackgroundLocationUpdates = true
+                    print("✅ Background location updates re-enabled")
+                }
                 self.startUpdating()
             @unknown default:
-                print("Location authorized always")
-            //@unknown default:
-             //   print("Unknown location authorization status")
+                print("❓ Unknown location authorization status")
             }
         }
     }

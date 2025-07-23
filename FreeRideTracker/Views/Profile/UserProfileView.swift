@@ -43,7 +43,7 @@ struct UserProfileView: View {
             .onChange(of: selectedImage) { _, newImage in
                 if let image = newImage,
                    let imageData = image.jpegData(compressionQuality: 0.8),
-                   var profile = authManager.userProfile {
+                   let profile = authManager.userProfile {
                     profile.profileImageData = imageData
                     authManager.updateUserProfile(profile)
                 }
