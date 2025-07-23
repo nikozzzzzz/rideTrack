@@ -21,6 +21,21 @@ class NotificationManager {
         }
     }
     
+    func checkNotificationPermission(completion: @escaping (Bool) -> Void) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                switch settings.authorizationStatus {
+                case .authorized, .provisional:
+                    completion(true)
+                case .denied, .notDetermined, .ephemeral:
+                    completion(false)
+                @unknown default:
+                    completion(false)
+                }
+            }
+        }
+    }
+    
     func showTrackingNotification(activityType: String) {
         let content = UNMutableNotificationContent()
         content.title = "Ride in Progress"

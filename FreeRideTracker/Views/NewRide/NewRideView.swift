@@ -132,7 +132,21 @@ struct NewRideView: View {
         
         isStartingRide = true
         
-        // Check location permission
+        // Check notification permission first
+        NotificationManager.shared.checkNotificationPermission { granted in
+            if granted {
+                // Notification permission already granted, proceed with location permission
+                checkLocationPermission()
+            } else {
+                // Request notification permission
+                NotificationManager.shared.requestNotificationPermission()
+                // Continue with location permission regardless of notification permission result
+                checkLocationPermission()
+            }
+        }
+    }
+    
+    private func checkLocationPermission() {
         let locationManager = LocationManager.shared
         
         switch locationManager.authorizationStatus {

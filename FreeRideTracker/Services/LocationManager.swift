@@ -66,7 +66,14 @@ class LocationManager: NSObject, ObservableObject {
         isPaused = false
         
         locationManager.startUpdatingLocation()
-        NotificationManager.shared.showTrackingNotification(activityType: session.activityType.displayName)
+        
+        // Check notification permission before showing tracking notification
+        NotificationManager.shared.checkNotificationPermission { granted in
+            if granted {
+                NotificationManager.shared.showTrackingNotification(activityType: session.activityType.displayName)
+            }
+            // If permission not granted, silently skip the notification
+        }
         
         print("Started location tracking for session: \(session.id)")
     }
@@ -83,7 +90,15 @@ class LocationManager: NSObject, ObservableObject {
         guard isTracking, isPaused, let session = currentSession else { return }
         isPaused = false
         locationManager.startUpdatingLocation()
-        NotificationManager.shared.showTrackingNotification(activityType: session.activityType.displayName)
+        
+        // Check notification permission before showing tracking notification
+        NotificationManager.shared.checkNotificationPermission { granted in
+            if granted {
+                NotificationManager.shared.showTrackingNotification(activityType: session.activityType.displayName)
+            }
+            // If permission not granted, silently skip the notification
+        }
+        
         print("Resumed location tracking")
     }
     
