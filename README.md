@@ -1,4 +1,4 @@
-# RideTrack iOS App
+# FreeRide Tracker iOS App
 
 A simplistic sports tracking application built with SwiftUI, SwiftData, and CloudKit for iOS 18+.
 Track your running, cycling, motorcycle rides, skiing, and walking activities with real-time GPS tracking, detailed statistics, and iCloud synchronization.
