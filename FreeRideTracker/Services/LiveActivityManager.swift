@@ -6,12 +6,20 @@ import CoreLocation
 class LiveActivityManager {
     static let shared = LiveActivityManager()
     private var currentActivity: Activity<RideTrackingAttributes>?
+    private var lastUpdateTime: Date?
+    private let minimumUpdateInterval: TimeInterval = 1.0 // Prevent too frequent updates
     
     private init() {}
     
     func startLiveActivity(rideType: String, startLocation: String? = nil) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            print("Live Activities not enabled")
+            AppLogger.warning("Live Activities not enabled by user", category: .ui)
+            return
+        }
+        
+        // Don't start if already active
+        guard currentActivity == nil else {
+            AppLogger.warning("Live Activity already active, skipping start", category: .ui)
             return
         }
         
@@ -35,14 +43,33 @@ class LiveActivityManager {
                 pushType: nil
             )
             currentActivity = activity
-            print("Live Activity started with ID: \(activity.id)")
+            lastUpdateTime = Date()
+            AppLogger.info("Live Activity started with ID: \(activity.id)", category: .ui)
         } catch {
-            print("Failed to start Live Activity: \(error)")
+            AppLogger.error("Failed to start Live Activity", error: error, category: .ui)
         }
     }
     
     func updateLiveActivity(distance: Double, duration: TimeInterval, averageSpeed: Double, currentSpeed: Double) {
-        guard let activity = currentActivity else { return }
+        guard let activity = currentActivity else {
+            AppLogger.debug("No active Live Activity to update", category: .ui)
+            return
+        }
+        
+        // Throttle updates to prevent excessive API calls
+        if let lastUpdate = lastUpdateTime,
+           Date().timeIntervalSince(lastUpdate) < minimumUpdateInterval {
+            return
+        }
+        
+        // Validate input values
+        guard distance >= 0, distance.isFinite,
+              duration >= 0, duration.isFinite,
+              averageSpeed >= 0, averageSpeed.isFinite,
+              currentSpeed >= 0, currentSpeed.isFinite else {
+            AppLogger.warning("Invalid values for Live Activity update", category: .ui)
+            return
+        }
         
         let updatedState = RideTrackingAttributes.ContentState(
             distance: distance,
@@ -53,17 +80,34 @@ class LiveActivityManager {
         )
         
         Task {
-            await activity.update(using: updatedState)
+            do {
+                await activity.update(using: updatedState)
+                lastUpdateTime = Date()
+                AppLogger.debug("Live Activity updated successfully", category: .ui)
+            } catch {
+                AppLogger.error("Failed to update Live Activity", error: error, category: .ui)
+            }
         }
     }
     
     func stopLiveActivity() {
-        guard let activity = currentActivity else { return }
+        guard let activity = currentActivity else {
+            AppLogger.debug("No active Live Activity to stop", category: .ui)
+            return
+        }
         
         Task {
-            await activity.end(dismissalPolicy: .default)
-            currentActivity = nil
-            print("Live Activity stopped")
+            do {
+                await activity.end(dismissalPolicy: .default)
+                currentActivity = nil
+                lastUpdateTime = nil
+                AppLogger.info("Live Activity stopped", category: .ui)
+            } catch {
+                AppLogger.error("Failed to stop Live Activity", error: error, category: .ui)
+                // Still clear the reference even if end fails
+                currentActivity = nil
+                lastUpdateTime = nil
+            }
         }
     }
     

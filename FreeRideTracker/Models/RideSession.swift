@@ -61,7 +61,9 @@ final class RideSession {
     
     var duration: TimeInterval {
         let end = endTime ?? Date()
-        return end.timeIntervalSince(startTime) - pausedDuration
+        let rawDuration = end.timeIntervalSince(startTime) - pausedDuration
+        // Ensure non-negative duration
+        return max(0, rawDuration)
     }
     
     var activeDuration: TimeInterval {
@@ -74,16 +76,21 @@ final class RideSession {
     }
     
     var averagePace: TimeInterval {
-        guard totalDistance > 0 else { return 0 }
-        return (duration / 60) / (totalDistance / 1000) // minutes per kilometer
+        guard totalDistance > 0, duration > 0 else { return 0 }
+        let pace = (duration / 60) / (totalDistance / 1000) // minutes per kilometer
+        // Validate pace is reasonable (not NaN, not infinite)
+        guard pace.isFinite, pace >= 0 else { return 0 }
+        return pace
     }
     
     var formattedDistance: String {
+        guard totalDistance >= 0, totalDistance.isFinite else { return "0.00 km" }
         let km = totalDistance / 1000
         return String(format: "%.2f km", km)
     }
     
     var formattedDuration: String {
+        guard duration >= 0, duration.isFinite else { return "0:00" }
         let hours = Int(duration) / 3600
         let minutes = Int(duration) % 3600 / 60
         let seconds = Int(duration) % 60
@@ -96,17 +103,19 @@ final class RideSession {
     }
     
     var formattedMaxSpeed: String {
+        guard maxSpeed >= 0, maxSpeed.isFinite else { return "0.0 km/h" }
         let kmh = maxSpeed * 3.6 // Convert m/s to km/h
         return String(format: "%.1f km/h", kmh)
     }
     
     var formattedAverageSpeed: String {
+        guard averageSpeed >= 0, averageSpeed.isFinite else { return "0.0 km/h" }
         let kmh = averageSpeed * 3.6 // Convert m/s to km/h
         return String(format: "%.1f km/h", kmh)
     }
     
     var formattedPace: String {
-        guard averagePace > 0 else { return "--:--" }
+        guard averagePace > 0, averagePace.isFinite else { return "--:--" }
         let minutes = Int(averagePace)
         let seconds = Int((averagePace - Double(minutes)) * 60)
         return String(format: "%d:%02d /km", minutes, seconds)
@@ -115,6 +124,12 @@ final class RideSession {
     // MARK: - Methods
     
     func addLocationPoint(_ point: LocationPoint) {
+        // Validate we're not exceeding reasonable limits
+        guard locationPoints.count < AppConstants.Validation.maxLocationPointsPerRide else {
+            AppLogger.warning("Maximum location points reached for ride session", category: .data)
+            return
+        }
+        
         locationPoints.append(point)
         point.rideSession = self
         updateCalculatedProperties()
@@ -149,31 +164,49 @@ final class RideSession {
             let previousPoint = locationPoints[i-1]
             let currentPoint = locationPoints[i]
             
-            // Distance calculation
+            // Distance calculation with validation
             let prevLocation = CLLocation(latitude: previousPoint.latitude, longitude: previousPoint.longitude)
             let currLocation = CLLocation(latitude: currentPoint.latitude, longitude: currentPoint.longitude)
-            distance += prevLocation.distance(from: currLocation)
+            let segmentDistance = prevLocation.distance(from: currLocation)
             
-            // Speed calculations
-            if currentPoint.speed >= 0 {
+            // Validate distance is reasonable
+            if segmentDistance >= 0 && segmentDistance.isFinite {
+                distance += segmentDistance
+            } else {
+                AppLogger.warning("Invalid distance calculated between points", category: .data)
+            }
+            
+            // Speed calculations with validation
+            if currentPoint.speed >= 0 && currentPoint.speed.isFinite && currentPoint.speed <= AppConstants.Location.maxReasonableSpeed {
                 maxSpd = max(maxSpd, currentPoint.speed)
                 totalSpd += currentPoint.speed
                 validSpeedCount += 1
             }
             
-            // Elevation calculations
+            // Elevation calculations with validation
             let elevationDiff = currentPoint.altitude - previousPoint.altitude
-            if elevationDiff > 0 {
-                elevationGain += elevationDiff
-            } else {
-                elevationLoss += abs(elevationDiff)
+            if elevationDiff.isFinite {
+                if elevationDiff > 0 {
+                    elevationGain += elevationDiff
+                } else {
+                    elevationLoss += abs(elevationDiff)
+                }
             }
         }
         
-        self.totalDistance = distance
-        self.maxSpeed = maxSpd
-        self.averageSpeed = validSpeedCount > 0 ? totalSpd / Double(validSpeedCount) : 0
-        self.totalElevationGain = elevationGain
-        self.totalElevationLoss = elevationLoss
+        // Update properties with validated values
+        self.totalDistance = max(0, distance)
+        self.maxSpeed = max(0, maxSpd)
+        
+        // Calculate average speed with division by zero protection
+        if validSpeedCount > 0 {
+            let avgSpd = totalSpd / Double(validSpeedCount)
+            self.averageSpeed = avgSpd.isFinite ? max(0, avgSpd) : 0
+        } else {
+            self.averageSpeed = 0
+        }
+        
+        self.totalElevationGain = max(0, elevationGain)
+        self.totalElevationLoss = max(0, elevationLoss)
     }
 }

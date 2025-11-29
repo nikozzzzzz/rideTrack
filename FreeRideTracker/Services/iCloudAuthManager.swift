@@ -34,35 +34,47 @@ class iCloudAuthManager {
         errorMessage = nil
         
         container.accountStatus { [weak self] status, error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                self?.authenticationStatus = status
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                
+                self.isLoading = false
+                self.authenticationStatus = status
                 
                 if let error = error {
-                    self?.errorMessage = error.localizedDescription
-                    self?.isSignedIn = false
+                    let sanitizedMessage = self.sanitizeErrorMessage(error)
+                    self.errorMessage = sanitizedMessage
+                    self.isSignedIn = false
+                    AppLogger.error("Failed to check iCloud account status", error: error, category: .auth)
                     return
                 }
                 
                 switch status {
                 case .available:
-                    self?.isSignedIn = true
-                    self?.fetchUserProfile()
+                    self.isSignedIn = true
+                    AppLogger.info("iCloud account available", category: .auth)
+                    self.fetchUserProfile()
                 case .noAccount:
-                    self?.isSignedIn = false
-                    self?.errorMessage = "No iCloud account found. Please sign in to iCloud in Settings."
+                    self.isSignedIn = false
+                    self.errorMessage = "No iCloud account found. Please sign in to iCloud in Settings."
+                    AppLogger.warning("No iCloud account found", category: .auth)
                 case .restricted:
-                    self?.isSignedIn = false
-                    self?.errorMessage = "iCloud access is restricted on this device."
+                    self.isSignedIn = false
+                    self.errorMessage = "iCloud access is restricted on this device."
+                    AppLogger.warning("iCloud access restricted", category: .auth)
                 case .couldNotDetermine:
-                    self?.isSignedIn = false
-                    self?.errorMessage = "Could not determine iCloud status."
+                    self.isSignedIn = false
+                    self.errorMessage = "Could not determine iCloud status."
+                    AppLogger.warning("Could not determine iCloud status", category: .auth)
                 case .temporarilyUnavailable:
-                    self?.isSignedIn = false
-                    self?.errorMessage = "iCloud is temporarily unavailable."
+                    self.isSignedIn = false
+                    self.errorMessage = "iCloud is temporarily unavailable."
+                    AppLogger.warning("iCloud temporarily unavailable", category: .auth)
                 @unknown default:
-                    self?.isSignedIn = false
-                    self?.errorMessage = "Unknown iCloud status."
+                    self.isSignedIn = false
+                    self.errorMessage = "Unknown iCloud status."
+                    AppLogger.warning("Unknown iCloud status", category: .auth)
                 }
             }
         }
@@ -81,17 +93,22 @@ class iCloudAuthManager {
             guard let self = self else { return }
             
             if let error = error {
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
                     self.isLoading = false
-                    self.errorMessage = "Failed to fetch user ID: \(error.localizedDescription)"
+                    let sanitizedMessage = self.sanitizeErrorMessage(error)
+                    self.errorMessage = "Failed to fetch user ID: \(sanitizedMessage)"
+                    AppLogger.error("Failed to fetch user record ID", error: error, category: .auth)
                 }
                 return
             }
             
             guard let userRecordID = recordID else {
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
                     self.isLoading = false
                     self.errorMessage = "No user record ID found"
+                    AppLogger.warning("No user record ID found", category: .auth)
                 }
                 return
             }
@@ -106,20 +123,28 @@ class iCloudAuthManager {
         let query = CKQuery(recordType: UserProfile.recordType, predicate: predicate)
         
         database.perform(query, inZoneWith: nil) { [weak self] records, error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                
+                self.isLoading = false
                 
                 if let error = error {
-                    self?.errorMessage = "Failed to fetch profile: \(error.localizedDescription)"
+                    let sanitizedMessage = self.sanitizeErrorMessage(error)
+                    self.errorMessage = "Failed to fetch profile: \(sanitizedMessage)"
+                    AppLogger.error("Failed to fetch user profile", error: error, category: .network)
                     return
                 }
                 
                 if let record = records?.first {
                     // User profile exists, load it
-                    self?.userProfile = UserProfile(from: record)
+                    self.userProfile = UserProfile(from: record)
+                    AppLogger.info("User profile loaded successfully", category: .auth)
                 } else {
                     // No profile exists, create a new one
-                    self?.createNewUserProfile(userRecordID: userRecordID)
+                    AppLogger.info("No existing profile found, creating new one", category: .auth)
+                    self.createNewUserProfile(userRecordID: userRecordID)
                 }
             }
         }
@@ -130,8 +155,14 @@ class iCloudAuthManager {
         
         // Fetch user's name from iCloud if available
         container.discoverUserIdentity(withUserRecordID: CKRecord.ID(recordName: userRecordID)) { [weak self] userIdentity, error in
-            DispatchQueue.main.async {
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
+                
+                if let error = error {
+                    AppLogger.warning("Could not discover user identity", error: error, category: .auth)
+                }
                 
                 let firstName = userIdentity?.nameComponents?.givenName ?? ""
                 let lastName = userIdentity?.nameComponents?.familyName ?? ""
@@ -144,13 +175,17 @@ class iCloudAuthManager {
                     isCloudSyncEnabled: true
                 )
                 
+                AppLogger.info("Creating new user profile", category: .auth)
                 self.saveUserProfile(newProfile)
             }
         }
     }
     
     func saveUserProfile(_ profile: UserProfile) {
-        guard isSignedIn else { return }
+        guard isSignedIn else {
+            AppLogger.warning("Cannot save profile: not signed in to iCloud", category: .auth)
+            return
+        }
         
         isLoading = true
         errorMessage = nil
@@ -158,24 +193,34 @@ class iCloudAuthManager {
         let record = profile.toCKRecord()
         
         database.save(record) { [weak self] savedRecord, error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                
+                self.isLoading = false
                 
                 if let error = error {
-                    self?.errorMessage = "Failed to save profile: \(error.localizedDescription)"
+                    let sanitizedMessage = self.sanitizeErrorMessage(error)
+                    self.errorMessage = "Failed to save profile: \(sanitizedMessage)"
+                    AppLogger.error("Failed to save user profile", error: error, category: .network)
                     return
                 }
                 
                 if savedRecord != nil {
-                    self?.userProfile = profile
-                    self?.userProfile?.lastSyncDate = Date()
+                    self.userProfile = profile
+                    self.userProfile?.lastSyncDate = Date()
+                    AppLogger.info("User profile saved successfully", category: .auth)
                 }
             }
         }
     }
     
     func updateUserProfile(_ profile: UserProfile) {
-        guard isSignedIn else { return }
+        guard isSignedIn else {
+            AppLogger.warning("Cannot update profile: not signed in to iCloud", category: .auth)
+            return
+        }
         
         profile.lastSyncDate = Date()
         saveUserProfile(profile)
@@ -188,11 +233,13 @@ class iCloudAuthManager {
         userProfile = nil
         authenticationStatus = .couldNotDetermine
         errorMessage = nil
+        AppLogger.info("User signed out", category: .auth)
     }
     
     // MARK: - Utility Methods
     
     func refreshAuthStatus() {
+        AppLogger.info("Refreshing iCloud authentication status", category: .auth)
         checkAuthenticationStatus()
     }
     
@@ -228,5 +275,33 @@ class iCloudAuthManager {
         @unknown default:
             return .gray
         }
+    }
+    
+    // MARK: - Error Sanitization
+    
+    /// Sanitizes error messages to avoid exposing internal details
+    private func sanitizeErrorMessage(_ error: Error) -> String {
+        // Don't expose internal error details, provide user-friendly messages
+        if let ckError = error as? CKError {
+            switch ckError.code {
+            case .networkUnavailable, .networkFailure:
+                return "Network connection unavailable"
+            case .notAuthenticated:
+                return "Please sign in to iCloud"
+            case .quotaExceeded:
+                return "iCloud storage quota exceeded"
+            case .serverRejectedRequest:
+                return "Request was rejected by server"
+            case .serviceUnavailable:
+                return "iCloud service is temporarily unavailable"
+            case .requestRateLimited:
+                return "Too many requests, please try again later"
+            default:
+                return "An iCloud error occurred"
+            }
+        }
+        
+        // Generic error message for unknown errors
+        return "An error occurred. Please try again."
     }
 }

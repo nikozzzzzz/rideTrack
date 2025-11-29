@@ -130,20 +130,28 @@ struct NewRideView: View {
     private func startRide() {
         guard !hasActiveSession else { return }
         
-        isStartingRide = true
-        
-        // Check notification permission first
-        NotificationManager.shared.checkNotificationPermission { granted in
-            if granted {
-                // Notification permission already granted, proceed with location permission
-                checkLocationPermission()
-            } else {
-                // Request notification permission
-                NotificationManager.shared.requestNotificationPermission()
-                // Continue with location permission regardless of notification permission result
-                checkLocationPermission()
+        // Validate custom title if provided
+        if !customTitle.isEmpty {
+            let trimmedTitle = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedTitle.count > AppConstants.Validation.maxTitleLength {
+                AppLogger.warning("Custom title exceeds maximum length", category: .ui)
+                customTitle = String(trimmedTitle.prefix(AppConstants.Validation.maxTitleLength))
             }
         }
+        
+        isStartingRide = true
+        
+        // Check notification permission but don't block ride start
+        // Live Activities are enabled by default
+        NotificationManager.shared.checkNotificationPermission { granted in
+            if !granted {
+                // Request notification permission for future use, but proceed with ride
+                NotificationManager.shared.requestNotificationPermission()
+            }
+        }
+        
+        // Proceed immediately to location permission check
+        checkLocationPermission()
     }
     
     private func checkLocationPermission() {
@@ -151,18 +159,19 @@ struct NewRideView: View {
         
         switch locationManager.authorizationStatus {
         case .notDetermined:
-            locationManager.requestLocationPermission { granted in
+            locationManager.requestLocationPermission { [weak self] granted in
                 DispatchQueue.main.async {
+                    guard let self = self else { return }
                     if granted {
                         // After first grant, we might still be 'When In Use'
                         if locationManager.authorizationStatus == .authorizedWhenInUse {
-                            showingBackgroundPermissionAlert = true
+                            self.showingBackgroundPermissionAlert = true
                         } else {
-                            createAndStartRide()
+                            self.createAndStartRide()
                         }
                     } else {
-                        showingLocationPermissionAlert = true
-                        isStartingRide = false
+                        self.showingLocationPermissionAlert = true
+                        self.isStartingRide = false
                     }
                 }
             }
@@ -171,12 +180,13 @@ struct NewRideView: View {
             isStartingRide = false
         case .authorizedWhenInUse:
             // Already authorized for 'When In Use', now ask for 'Always'
-            locationManager.requestLocationPermission { _ in
+            locationManager.requestLocationPermission { [weak self] _ in
                 DispatchQueue.main.async {
+                    guard let self = self else { return }
                     if locationManager.authorizationStatus == .authorizedAlways {
-                        createAndStartRide()
+                        self.createAndStartRide()
                     } else {
-                        showingBackgroundPermissionAlert = true
+                        self.showingBackgroundPermissionAlert = true
                     }
                 }
             }
@@ -189,8 +199,13 @@ struct NewRideView: View {
     }
     
     private func createAndStartRide() {
-        let title = customTitle.isEmpty ? nil : customTitle
-        let newSession = RideSession(activityType: selectedActivityType, title: title)
+        // Validate and sanitize title
+        let sanitizedTitle: String? = {
+            let trimmed = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }()
+        
+        let newSession = RideSession(activityType: selectedActivityType, title: sanitizedTitle)
         
         modelContext.insert(newSession)
         
@@ -201,11 +216,13 @@ struct NewRideView: View {
         customTitle = ""
         isStartingRide = false
         
-        // Save context
+        // Save context with error handling
         do {
             try modelContext.save()
+            AppLogger.info("New ride session created and saved", category: .data)
         } catch {
-            print("Failed to save new ride session: \(error)")
+            AppLogger.error("Failed to save new ride session", error: error, category: .data)
+            // Even if save fails, tracking has started, so don't block the user
         }
     }
 }

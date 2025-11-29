@@ -11,6 +11,7 @@ import SwiftData
 import UIKit
 import os.log
 
+@MainActor
 class LocationManager: NSObject, ObservableObject {
     static let shared = LocationManager()
     
@@ -24,15 +25,23 @@ class LocationManager: NSObject, ObservableObject {
     @Published var currentAltitude: Double = 0.0
     @Published var isTracking = false
     @Published var isPaused = false
+    @Published var lastError: LocationError?
     
     private var lastLocationUpdate: Date = Date()
-    private let minimumDistanceFilter: CLLocationDistance = 5.0 // meters
-    private let minimumTimeInterval: TimeInterval = 2.0 // seconds
+    private let minimumDistanceFilter: CLLocationDistance = AppConstants.Location.minimumDistanceFilter
+    private let minimumTimeInterval: TimeInterval = AppConstants.Location.minimumTimeInterval
     
     override init() {
         super.init()
         setupLocationManager()
         NotificationManager.shared.requestNotificationPermission()
+    }
+    
+    deinit {
+        // Cleanup resources
+        stopTracking()
+        locationManager.delegate = nil
+        AppLogger.debug("LocationManager deallocated", category: .location)
     }
     
     private func setupLocationManager() {
@@ -42,8 +51,7 @@ class LocationManager: NSObject, ObservableObject {
         locationManager.pausesLocationUpdatesAutomatically = false
         authorizationStatus = locationManager.authorizationStatus
         
-        // Don't configure background location updates here - only when tracking starts
-        print("LocationManager setup completed with authorization: \(authorizationStatus.rawValue)")
+        AppLogger.info("LocationManager setup completed with authorization: \(authorizationStatus.rawValue)", category: .location)
     }
     
     
@@ -52,16 +60,22 @@ class LocationManager: NSObject, ObservableObject {
         case .notDetermined:
             // First request "When In Use" permission
             locationManager.requestWhenInUseAuthorization()
+            AppLogger.info("Requesting 'When In Use' location permission", category: .location)
         case .authorizedWhenInUse:
             // If we have "When In Use", request "Always" for background tracking
             locationManager.requestAlwaysAuthorization()
+            AppLogger.info("Requesting 'Always' location permission", category: .location)
         case .authorizedAlways:
             completion(true)
             return
         case .denied, .restricted:
+            lastError = authorizationStatus == .denied ? .permissionDenied : .permissionRestricted
+            AppLogger.warning("Location permission denied or restricted", category: .location)
             completion(false)
             return
         @unknown default:
+            lastError = .locationUnavailable
+            AppLogger.warning("Unknown location authorization status", category: .location)
             completion(false)
             return
         }
@@ -73,7 +87,8 @@ class LocationManager: NSObject, ObservableObject {
     
     func startTracking(for session: RideSession, with context: ModelContext? = nil) {
         guard authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse else {
-            print("❌ Location permission not granted")
+            lastError = .permissionDenied
+            AppLogger.error("Cannot start tracking: Location permission not granted", category: .location)
             return
         }
         
@@ -81,6 +96,7 @@ class LocationManager: NSObject, ObservableObject {
         modelContext = context
         isTracking = true
         isPaused = false
+        lastError = nil
         
         // Configure location manager for high accuracy tracking
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
@@ -89,21 +105,13 @@ class LocationManager: NSObject, ObservableObject {
         // Enable background location updates ONLY if we have Always permission
         if authorizationStatus == .authorizedAlways {
             locationManager.allowsBackgroundLocationUpdates = true
-            print("✅ Background location updates enabled")
+            AppLogger.info("Background location updates enabled", category: .location)
         } else {
-            print("⚠️ Only 'When In Use' permission granted. Background tracking will not work.")
+            AppLogger.warning("Only 'When In Use' permission granted. Background tracking will not work.", category: .location)
         }
         
         locationManager.startUpdatingLocation()
-        print("🚀 Started location tracking with authorization: \(authorizationStatus.rawValue)")
-        
-        // Check notification permission before showing tracking notification
-        NotificationManager.shared.checkNotificationPermission { granted in
-            if granted {
-                NotificationManager.shared.showTrackingNotification(activityType: session.activityType.displayName)
-            }
-            // If permission not granted, silently skip the notification
-        }
+        AppLogger.info("Started location tracking for session: \(session.id)", category: .location)
         
         // Start Live Activity if available
         if #available(iOS 16.1, *) {
@@ -112,32 +120,20 @@ class LocationManager: NSObject, ObservableObject {
                 startLocation: nil
             )
         }
-        
-        print("Started location tracking for session: \(session.id)")
     }
     
     func pauseTracking() {
         guard isTracking else { return }
         isPaused = true
         locationManager.stopUpdatingLocation()
-        NotificationManager.shared.hideTrackingNotification()
-        print("Paused location tracking")
+        AppLogger.info("Paused location tracking", category: .location)
     }
     
     func resumeTracking() {
-        guard isTracking, isPaused, let session = currentSession else { return }
+        guard isTracking, isPaused, currentSession != nil else { return }
         isPaused = false
         locationManager.startUpdatingLocation()
-        
-        // Check notification permission before showing tracking notification
-        NotificationManager.shared.checkNotificationPermission { granted in
-            if granted {
-                NotificationManager.shared.showTrackingNotification(activityType: session.activityType.displayName)
-            }
-            // If permission not granted, silently skip the notification
-        }
-        
-        print("Resumed location tracking")
+        AppLogger.info("Resumed location tracking", category: .location)
     }
     
     func stopTracking() {
@@ -150,17 +146,15 @@ class LocationManager: NSObject, ObservableObject {
         // Disable background location updates when not tracking
         if authorizationStatus == .authorizedAlways {
             locationManager.allowsBackgroundLocationUpdates = false
-            print("Disabled background location updates")
+            AppLogger.info("Disabled background location updates", category: .location)
         }
-        
-        NotificationManager.shared.hideTrackingNotification()
         
         // Stop Live Activity if available
         if #available(iOS 16.1, *) {
             LiveActivityManager.shared.stopLiveActivity()
         }
         
-        print("Stopped location tracking")
+        AppLogger.info("Stopped location tracking", category: .location)
     }
     
     func startUpdating() {
@@ -174,16 +168,57 @@ class LocationManager: NSObject, ObservableObject {
         }
     }
     
-    private func shouldRecordLocation(_ location: CLLocation) -> Bool {
-        // Filter out inaccurate readings
-        guard location.horizontalAccuracy <= 50 else {
-            print("Location accuracy too low: \(location.horizontalAccuracy)m")
-            return false
+    // MARK: - Validation
+    
+    private func validateLocation(_ location: CLLocation) throws {
+        // Validate coordinates
+        guard AppConstants.Location.validLatitudeRange.contains(location.coordinate.latitude) else {
+            throw LocationError.invalidCoordinates(
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude
+            )
         }
         
-        // Filter out old readings
-        guard location.timestamp.timeIntervalSinceNow > -10 else {
-            print("Location reading too old")
+        guard AppConstants.Location.validLongitudeRange.contains(location.coordinate.longitude) else {
+            throw LocationError.invalidCoordinates(
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude
+            )
+        }
+        
+        // Validate accuracy
+        guard location.horizontalAccuracy > 0 && location.horizontalAccuracy <= AppConstants.Location.maxAcceptableAccuracy else {
+            throw LocationError.invalidAccuracy(accuracy: location.horizontalAccuracy)
+        }
+        
+        // Validate timestamp (not too old, not in future)
+        let age = abs(location.timestamp.timeIntervalSinceNow)
+        guard age <= AppConstants.Location.maxLocationAge else {
+            throw LocationError.invalidTimestamp(location.timestamp)
+        }
+        
+        // Validate speed if available
+        if location.speed >= 0 {
+            guard location.speed <= AppConstants.Location.maxReasonableSpeed else {
+                throw LocationError.invalidSpeed(speed: location.speed)
+            }
+        }
+        
+        // Validate altitude
+        guard location.altitude >= AppConstants.Location.minReasonableAltitude &&
+              location.altitude <= AppConstants.Location.maxReasonableAltitude else {
+            throw LocationError.invalidAltitude(altitude: location.altitude)
+        }
+    }
+    
+    private func shouldRecordLocation(_ location: CLLocation) -> Bool {
+        // Validate location first
+        do {
+            try validateLocation(location)
+        } catch {
+            if let locationError = error as? LocationError {
+                AppLogger.warning("Location validation failed: \(locationError.localizedDescription)", category: .location)
+            }
             return false
         }
         
@@ -235,19 +270,19 @@ class LocationManager: NSObject, ObservableObject {
         // Save context
         do {
             try context.save()
-            print("Recorded location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+            AppLogger.debug("Recorded location: \(location.coordinate.latitude), \(location.coordinate.longitude)", category: .location)
         } catch {
-            print("Failed to save location point: \(error)")
+            AppLogger.error("Failed to save location point", error: error, category: .data)
         }
     }
 }
 
 // MARK: - CLLocationManagerDelegate
 extension LocationManager: CLLocationManagerDelegate {
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         
-        DispatchQueue.main.async {
+        Task { @MainActor in
             if self.shouldRecordLocation(location) {
                 self.recordLocation(location)
             } else {
@@ -259,59 +294,64 @@ extension LocationManager: CLLocationManagerDelegate {
         }
     }
     
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location manager failed with error: \(error.localizedDescription)")
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        AppLogger.error("Location manager failed", error: error, category: .location)
         
         if let clError = error as? CLError {
-            switch clError.code {
-            case .denied:
-                print("Location access denied")
-            case .locationUnknown:
-                print("Location unknown")
-            case .network:
-                print("Network error")
-            default:
-                print("Other location error: \(clError.localizedDescription)")
+            Task { @MainActor in
+                switch clError.code {
+                case .denied:
+                    self.lastError = .permissionDenied
+                    AppLogger.warning("Location access denied", category: .location)
+                case .locationUnknown:
+                    self.lastError = .locationUnavailable
+                    AppLogger.warning("Location unknown", category: .location)
+                case .network:
+                    AppLogger.warning("Network error while getting location", category: .location)
+                default:
+                    AppLogger.error("Other location error: \(clError.localizedDescription)", category: .location)
+                }
             }
         }
     }
     
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        DispatchQueue.main.async {
+    nonisolated func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        Task { @MainActor in
             self.authorizationStatus = status
             
             switch status {
             case .notDetermined:
-                print("📍 Location authorization not determined")
+                AppLogger.info("Location authorization not determined", category: .location)
             case .denied, .restricted:
-                print("❌ Location authorization denied/restricted")
+                AppLogger.warning("Location authorization denied/restricted", category: .location)
+                self.lastError = status == .denied ? .permissionDenied : .permissionRestricted
                 self.stopTracking()
             case .authorizedWhenInUse:
-                print("📍 Location authorized: When In Use")
+                AppLogger.info("Location authorized: When In Use", category: .location)
                 if self.isTracking {
-                    print("⚠️ Currently tracking but only have 'When In Use' permission")
+                    AppLogger.warning("Currently tracking but only have 'When In Use' permission", category: .location)
                 }
                 self.startUpdating()
             case .authorizedAlways:
-                print("✅ Location authorized: Always")
+                AppLogger.info("Location authorized: Always", category: .location)
                 if self.isTracking {
                     // Re-enable background location updates if we're currently tracking
                     self.locationManager.allowsBackgroundLocationUpdates = true
-                    print("✅ Background location updates re-enabled")
+                    AppLogger.info("Background location updates re-enabled", category: .location)
                 }
                 self.startUpdating()
             @unknown default:
-                print("❓ Unknown location authorization status")
+                AppLogger.warning("Unknown location authorization status", category: .location)
             }
         }
     }
     
-    func locationManagerDidPauseLocationUpdates(_ manager: CLLocationManager) {
-        print("Location updates paused by system")
+    nonisolated func locationManagerDidPauseLocationUpdates(_ manager: CLLocationManager) {
+        AppLogger.info("Location updates paused by system", category: .location)
     }
     
-    func locationManagerDidResumeLocationUpdates(_ manager: CLLocationManager) {
-        print("Location updates resumed by system")
+    nonisolated func locationManagerDidResumeLocationUpdates(_ manager: CLLocationManager) {
+        AppLogger.info("Location updates resumed by system", category: .location)
     }
 }
 

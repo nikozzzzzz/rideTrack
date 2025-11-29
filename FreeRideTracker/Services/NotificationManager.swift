@@ -16,7 +16,14 @@ class NotificationManager {
     func requestNotificationPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             if let error = error {
-                print("Error requesting notification permission: \(error.localizedDescription)")
+                AppLogger.error("Error requesting notification permission", error: error, category: .general)
+                return
+            }
+            
+            if granted {
+                AppLogger.info("Notification permission granted", category: .general)
+            } else {
+                AppLogger.warning("Notification permission denied by user", category: .general)
             }
         }
     }
@@ -24,34 +31,33 @@ class NotificationManager {
     func checkNotificationPermission(completion: @escaping (Bool) -> Void) {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             DispatchQueue.main.async {
+                let isAuthorized: Bool
                 switch settings.authorizationStatus {
                 case .authorized, .provisional:
-                    completion(true)
-                case .denied, .notDetermined, .ephemeral:
-                    completion(false)
+                    isAuthorized = true
+                    AppLogger.debug("Notification permission: authorized", category: .general)
+                case .denied:
+                    isAuthorized = false
+                    AppLogger.debug("Notification permission: denied", category: .general)
+                case .notDetermined:
+                    isAuthorized = false
+                    AppLogger.debug("Notification permission: not determined", category: .general)
+                case .ephemeral:
+                    isAuthorized = false
+                    AppLogger.debug("Notification permission: ephemeral", category: .general)
                 @unknown default:
-                    completion(false)
+                    isAuthorized = false
+                    AppLogger.warning("Unknown notification permission status", category: .general)
                 }
+                completion(isAuthorized)
             }
         }
     }
     
-    func showTrackingNotification(activityType: String) {
-        let content = UNMutableNotificationContent()
-        content.title = "Ride in Progress"
-        content.body = "Currently tracking your \(activityType) session."
-        content.sound = .none
-        
-        let request = UNNotificationRequest(identifier: "ride-tracking", content: content, trigger: nil) // nil trigger for immediate, persistent notification
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("Error showing notification: \(error.localizedDescription)")
-            }
+    /// Opens the app settings page
+    func openNotificationSettings() {
+        if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(settingsUrl)
         }
-    }
-    
-    func hideTrackingNotification() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["ride-tracking"])
-        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["ride-tracking"])
     }
 }
