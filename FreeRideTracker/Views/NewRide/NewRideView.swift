@@ -219,9 +219,9 @@ struct NewRideView: View {
         // Save context with error handling
         do {
             try modelContext.save()
-            AppLogger.info("New ride session created and saved", category: .data)
+            AppLogger.info("New ride session created and saved", category: AppLogger.data)
         } catch {
-            AppLogger.error("Failed to save new ride session", error: error, category: .data)
+            AppLogger.error("Failed to save new ride session", error: error, category: AppLogger.data)
             // Even if save fails, tracking has started, so don't block the user
         }
     }

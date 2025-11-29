@@ -25,10 +25,10 @@ struct FreeRideTrackerApp: App {
 
         do {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-            AppLogger.info("ModelContainer initialized successfully", category: .data)
+            AppLogger.info("ModelContainer initialized successfully", category: AppLogger.data)
             return container
         } catch {
-            AppLogger.critical("Failed to create ModelContainer", error: error, category: .data)
+            AppLogger.critical("Failed to create ModelContainer", error: error, category: AppLogger.data)
             // Don't crash - allow app to show error UI
             return nil
         }

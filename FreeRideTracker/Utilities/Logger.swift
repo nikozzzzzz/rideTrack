@@ -27,7 +27,7 @@ enum AppLogger {
     // MARK: - Convenience Methods
     
     /// Log a debug message (only visible in debug builds)
-    static func debug(_ message: String, category: Logger = .general, file: String = #file, function: String = #function, line: Int = #line) {
+    static func debug(_ message: String, category: Logger, file: String = #file, function: String = #function, line: Int = #line) {
         #if DEBUG
         let fileName = (file as NSString).lastPathComponent
         category.debug("[\(fileName):\(line)] \(function) - \(message)")
@@ -35,18 +35,18 @@ enum AppLogger {
     }
     
     /// Log an informational message
-    static func info(_ message: String, category: Logger = .general) {
+    static func info(_ message: String, category: Logger) {
         category.info("\(message)")
     }
     
     /// Log a warning message
-    static func warning(_ message: String, category: Logger = .general, file: String = #file, function: String = #function) {
+    static func warning(_ message: String, category: Logger, file: String = #file, function: String = #function) {
         let fileName = (file as NSString).lastPathComponent
         category.warning("[\(fileName)] \(function) - \(message)")
     }
     
     /// Log an error message
-    static func error(_ message: String, error: Error? = nil, category: Logger = .general, file: String = #file, function: String = #function) {
+    static func error(_ message: String, error: Error? = nil, category: Logger, file: String = #file, function: String = #function) {
         let fileName = (file as NSString).lastPathComponent
         if let error = error {
             category.error("[\(fileName)] \(function) - \(message): \(error.localizedDescription)")
@@ -56,7 +56,7 @@ enum AppLogger {
     }
     
     /// Log a critical error that requires immediate attention
-    static func critical(_ message: String, error: Error? = nil, category: Logger = .general, file: String = #file, function: String = #function) {
+    static func critical(_ message: String, error: Error? = nil, category: Logger, file: String = #file, function: String = #function) {
         let fileName = (file as NSString).lastPathComponent
         if let error = error {
             category.critical("[\(fileName)] \(function) - \(message): \(error.localizedDescription)")
@@ -71,7 +71,7 @@ enum AppLogger {
 extension AppLogger {
     
     /// Measure and log the execution time of a code block
-    static func measure<T>(_ operation: String, category: Logger = .general, block: () throws -> T) rethrows -> T {
+    static func measure<T>(_ operation: String, category: Logger, block: () throws -> T) rethrows -> T {
         let startTime = CFAbsoluteTimeGetCurrent()
         defer {
             let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
@@ -81,7 +81,7 @@ extension AppLogger {
     }
     
     /// Measure and log the execution time of an async code block
-    static func measureAsync<T>(_ operation: String, category: Logger = .general, block: () async throws -> T) async rethrows -> T {
+    static func measureAsync<T>(_ operation: String, category: Logger, block: () async throws -> T) async rethrows -> T {
         let startTime = CFAbsoluteTimeGetCurrent()
         defer {
             let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime

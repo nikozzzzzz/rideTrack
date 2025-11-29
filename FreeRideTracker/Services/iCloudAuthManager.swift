@@ -46,35 +46,35 @@ class iCloudAuthManager {
                     let sanitizedMessage = self.sanitizeErrorMessage(error)
                     self.errorMessage = sanitizedMessage
                     self.isSignedIn = false
-                    AppLogger.error("Failed to check iCloud account status", error: error, category: .auth)
+                    AppLogger.error("Failed to check iCloud account status", error: error, category: AppLogger.auth)
                     return
                 }
                 
                 switch status {
                 case .available:
                     self.isSignedIn = true
-                    AppLogger.info("iCloud account available", category: .auth)
+                    AppLogger.info("iCloud account available", category: AppLogger.auth)
                     self.fetchUserProfile()
                 case .noAccount:
                     self.isSignedIn = false
                     self.errorMessage = "No iCloud account found. Please sign in to iCloud in Settings."
-                    AppLogger.warning("No iCloud account found", category: .auth)
+                    AppLogger.warning("No iCloud account found", category: AppLogger.auth)
                 case .restricted:
                     self.isSignedIn = false
                     self.errorMessage = "iCloud access is restricted on this device."
-                    AppLogger.warning("iCloud access restricted", category: .auth)
+                    AppLogger.warning("iCloud access restricted", category: AppLogger.auth)
                 case .couldNotDetermine:
                     self.isSignedIn = false
                     self.errorMessage = "Could not determine iCloud status."
-                    AppLogger.warning("Could not determine iCloud status", category: .auth)
+                    AppLogger.warning("Could not determine iCloud status", category: AppLogger.auth)
                 case .temporarilyUnavailable:
                     self.isSignedIn = false
                     self.errorMessage = "iCloud is temporarily unavailable."
-                    AppLogger.warning("iCloud temporarily unavailable", category: .auth)
+                    AppLogger.warning("iCloud temporarily unavailable", category: AppLogger.auth)
                 @unknown default:
                     self.isSignedIn = false
                     self.errorMessage = "Unknown iCloud status."
-                    AppLogger.warning("Unknown iCloud status", category: .auth)
+                    AppLogger.warning("Unknown iCloud status", category: AppLogger.auth)
                 }
             }
         }
@@ -98,7 +98,7 @@ class iCloudAuthManager {
                     self.isLoading = false
                     let sanitizedMessage = self.sanitizeErrorMessage(error)
                     self.errorMessage = "Failed to fetch user ID: \(sanitizedMessage)"
-                    AppLogger.error("Failed to fetch user record ID", error: error, category: .auth)
+                    AppLogger.error("Failed to fetch user record ID", error: error, category: AppLogger.auth)
                 }
                 return
             }
@@ -108,7 +108,7 @@ class iCloudAuthManager {
                     guard let self = self else { return }
                     self.isLoading = false
                     self.errorMessage = "No user record ID found"
-                    AppLogger.warning("No user record ID found", category: .auth)
+                    AppLogger.warning("No user record ID found", category: AppLogger.auth)
                 }
                 return
             }
@@ -133,17 +133,17 @@ class iCloudAuthManager {
                 if let error = error {
                     let sanitizedMessage = self.sanitizeErrorMessage(error)
                     self.errorMessage = "Failed to fetch profile: \(sanitizedMessage)"
-                    AppLogger.error("Failed to fetch user profile", error: error, category: .network)
+                    AppLogger.error("Failed to fetch user profile", error: error, category: AppLogger.network)
                     return
                 }
                 
                 if let record = records?.first {
                     // User profile exists, load it
                     self.userProfile = UserProfile(from: record)
-                    AppLogger.info("User profile loaded successfully", category: .auth)
+                    AppLogger.info("User profile loaded successfully", category: AppLogger.auth)
                 } else {
                     // No profile exists, create a new one
-                    AppLogger.info("No existing profile found, creating new one", category: .auth)
+                    AppLogger.info("No existing profile found, creating new one", category: AppLogger.auth)
                     self.createNewUserProfile(userRecordID: userRecordID)
                 }
             }
@@ -161,7 +161,7 @@ class iCloudAuthManager {
                 guard let self = self else { return }
                 
                 if let error = error {
-                    AppLogger.warning("Could not discover user identity", error: error, category: .auth)
+                    AppLogger.error("Could not discover user identity", error: error, category: AppLogger.auth)
                 }
                 
                 let firstName = userIdentity?.nameComponents?.givenName ?? ""
@@ -175,7 +175,7 @@ class iCloudAuthManager {
                     isCloudSyncEnabled: true
                 )
                 
-                AppLogger.info("Creating new user profile", category: .auth)
+                AppLogger.info("Creating new user profile", category: AppLogger.auth)
                 self.saveUserProfile(newProfile)
             }
         }
@@ -183,7 +183,7 @@ class iCloudAuthManager {
     
     func saveUserProfile(_ profile: UserProfile) {
         guard isSignedIn else {
-            AppLogger.warning("Cannot save profile: not signed in to iCloud", category: .auth)
+            AppLogger.warning("Cannot save profile: not signed in to iCloud", category: AppLogger.auth)
             return
         }
         
@@ -203,14 +203,14 @@ class iCloudAuthManager {
                 if let error = error {
                     let sanitizedMessage = self.sanitizeErrorMessage(error)
                     self.errorMessage = "Failed to save profile: \(sanitizedMessage)"
-                    AppLogger.error("Failed to save user profile", error: error, category: .network)
+                    AppLogger.error("Failed to save user profile", error: error, category: AppLogger.network)
                     return
                 }
                 
                 if savedRecord != nil {
                     self.userProfile = profile
                     self.userProfile?.lastSyncDate = Date()
-                    AppLogger.info("User profile saved successfully", category: .auth)
+                    AppLogger.info("User profile saved successfully", category: AppLogger.auth)
                 }
             }
         }
@@ -218,7 +218,7 @@ class iCloudAuthManager {
     
     func updateUserProfile(_ profile: UserProfile) {
         guard isSignedIn else {
-            AppLogger.warning("Cannot update profile: not signed in to iCloud", category: .auth)
+            AppLogger.warning("Cannot update profile: not signed in to iCloud", category: AppLogger.auth)
             return
         }
         
@@ -233,13 +233,13 @@ class iCloudAuthManager {
         userProfile = nil
         authenticationStatus = .couldNotDetermine
         errorMessage = nil
-        AppLogger.info("User signed out", category: .auth)
+        AppLogger.info("User signed out", category: AppLogger.auth)
     }
     
     // MARK: - Utility Methods
     
     func refreshAuthStatus() {
-        AppLogger.info("Refreshing iCloud authentication status", category: .auth)
+        AppLogger.info("Refreshing iCloud authentication status", category: AppLogger.auth)
         checkAuthenticationStatus()
     }
     

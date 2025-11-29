@@ -16,14 +16,14 @@ class NotificationManager {
     func requestNotificationPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             if let error = error {
-                AppLogger.error("Error requesting notification permission", error: error, category: .general)
+                AppLogger.error("Error requesting notification permission", error: error, category: AppLogger.general)
                 return
             }
             
             if granted {
-                AppLogger.info("Notification permission granted", category: .general)
+                AppLogger.info("Notification permission granted", category: AppLogger.general)
             } else {
-                AppLogger.warning("Notification permission denied by user", category: .general)
+                AppLogger.warning("Notification permission denied by user", category: AppLogger.general)
             }
         }
     }
@@ -35,19 +35,19 @@ class NotificationManager {
                 switch settings.authorizationStatus {
                 case .authorized, .provisional:
                     isAuthorized = true
-                    AppLogger.debug("Notification permission: authorized", category: .general)
+                    AppLogger.debug("Notification permission: authorized", category: AppLogger.general)
                 case .denied:
                     isAuthorized = false
-                    AppLogger.debug("Notification permission: denied", category: .general)
+                    AppLogger.debug("Notification permission: denied", category: AppLogger.general)
                 case .notDetermined:
                     isAuthorized = false
-                    AppLogger.debug("Notification permission: not determined", category: .general)
+                    AppLogger.debug("Notification permission: not determined", category: AppLogger.general)
                 case .ephemeral:
                     isAuthorized = false
-                    AppLogger.debug("Notification permission: ephemeral", category: .general)
+                    AppLogger.debug("Notification permission: ephemeral", category: AppLogger.general)
                 @unknown default:
                     isAuthorized = false
-                    AppLogger.warning("Unknown notification permission status", category: .general)
+                    AppLogger.warning("Unknown notification permission status", category: AppLogger.general)
                 }
                 completion(isAuthorized)
             }

@@ -126,7 +126,7 @@ final class RideSession {
     func addLocationPoint(_ point: LocationPoint) {
         // Validate we're not exceeding reasonable limits
         guard locationPoints.count < AppConstants.Validation.maxLocationPointsPerRide else {
-            AppLogger.warning("Maximum location points reached for ride session", category: .data)
+            AppLogger.warning("Maximum location points reached for ride session", category: AppLogger.data)
             return
         }
         
@@ -173,7 +173,7 @@ final class RideSession {
             if segmentDistance >= 0 && segmentDistance.isFinite {
                 distance += segmentDistance
             } else {
-                AppLogger.warning("Invalid distance calculated between points", category: .data)
+                AppLogger.warning("Invalid distance calculated between points", category: AppLogger.data)
             }
             
             // Speed calculations with validation

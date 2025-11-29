@@ -41,7 +41,7 @@ class LocationManager: NSObject, ObservableObject {
         // Cleanup resources
         stopTracking()
         locationManager.delegate = nil
-        AppLogger.debug("LocationManager deallocated", category: .location)
+        AppLogger.debug("LocationManager deallocated", category: AppLogger.location)
     }
     
     private func setupLocationManager() {
@@ -51,7 +51,7 @@ class LocationManager: NSObject, ObservableObject {
         locationManager.pausesLocationUpdatesAutomatically = false
         authorizationStatus = locationManager.authorizationStatus
         
-        AppLogger.info("LocationManager setup completed with authorization: \(authorizationStatus.rawValue)", category: .location)
+        AppLogger.info("LocationManager setup completed with authorization: \(authorizationStatus.rawValue)", category: AppLogger.location)
     }
     
     
@@ -60,22 +60,22 @@ class LocationManager: NSObject, ObservableObject {
         case .notDetermined:
             // First request "When In Use" permission
             locationManager.requestWhenInUseAuthorization()
-            AppLogger.info("Requesting 'When In Use' location permission", category: .location)
+            AppLogger.info("Requesting 'When In Use' location permission", category: AppLogger.location)
         case .authorizedWhenInUse:
             // If we have "When In Use", request "Always" for background tracking
             locationManager.requestAlwaysAuthorization()
-            AppLogger.info("Requesting 'Always' location permission", category: .location)
+            AppLogger.info("Requesting 'Always' location permission", category: AppLogger.location)
         case .authorizedAlways:
             completion(true)
             return
         case .denied, .restricted:
             lastError = authorizationStatus == .denied ? .permissionDenied : .permissionRestricted
-            AppLogger.warning("Location permission denied or restricted", category: .location)
+            AppLogger.warning("Location permission denied or restricted", category: AppLogger.location)
             completion(false)
             return
         @unknown default:
             lastError = .locationUnavailable
-            AppLogger.warning("Unknown location authorization status", category: .location)
+            AppLogger.warning("Unknown location authorization status", category: AppLogger.location)
             completion(false)
             return
         }
@@ -88,7 +88,7 @@ class LocationManager: NSObject, ObservableObject {
     func startTracking(for session: RideSession, with context: ModelContext? = nil) {
         guard authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse else {
             lastError = .permissionDenied
-            AppLogger.error("Cannot start tracking: Location permission not granted", category: .location)
+            AppLogger.error("Cannot start tracking: Location permission not granted", category: AppLogger.location)
             return
         }
         
@@ -105,13 +105,13 @@ class LocationManager: NSObject, ObservableObject {
         // Enable background location updates ONLY if we have Always permission
         if authorizationStatus == .authorizedAlways {
             locationManager.allowsBackgroundLocationUpdates = true
-            AppLogger.info("Background location updates enabled", category: .location)
+            AppLogger.info("Background location updates enabled", category: AppLogger.location)
         } else {
-            AppLogger.warning("Only 'When In Use' permission granted. Background tracking will not work.", category: .location)
+            AppLogger.warning("Only 'When In Use' permission granted. Background tracking will not work.", category: AppLogger.location)
         }
         
         locationManager.startUpdatingLocation()
-        AppLogger.info("Started location tracking for session: \(session.id)", category: .location)
+        AppLogger.info("Started location tracking for session: \(session.id)", category: AppLogger.location)
         
         // Start Live Activity if available
         if #available(iOS 16.1, *) {
@@ -126,14 +126,14 @@ class LocationManager: NSObject, ObservableObject {
         guard isTracking else { return }
         isPaused = true
         locationManager.stopUpdatingLocation()
-        AppLogger.info("Paused location tracking", category: .location)
+        AppLogger.info("Paused location tracking", category: AppLogger.location)
     }
     
     func resumeTracking() {
         guard isTracking, isPaused, currentSession != nil else { return }
         isPaused = false
         locationManager.startUpdatingLocation()
-        AppLogger.info("Resumed location tracking", category: .location)
+        AppLogger.info("Resumed location tracking", category: AppLogger.location)
     }
     
     func stopTracking() {
@@ -146,7 +146,7 @@ class LocationManager: NSObject, ObservableObject {
         // Disable background location updates when not tracking
         if authorizationStatus == .authorizedAlways {
             locationManager.allowsBackgroundLocationUpdates = false
-            AppLogger.info("Disabled background location updates", category: .location)
+            AppLogger.info("Disabled background location updates", category: AppLogger.location)
         }
         
         // Stop Live Activity if available
@@ -154,7 +154,7 @@ class LocationManager: NSObject, ObservableObject {
             LiveActivityManager.shared.stopLiveActivity()
         }
         
-        AppLogger.info("Stopped location tracking", category: .location)
+        AppLogger.info("Stopped location tracking", category: AppLogger.location)
     }
     
     func startUpdating() {
@@ -217,7 +217,7 @@ class LocationManager: NSObject, ObservableObject {
             try validateLocation(location)
         } catch {
             if let locationError = error as? LocationError {
-                AppLogger.warning("Location validation failed: \(locationError.localizedDescription)", category: .location)
+                AppLogger.warning("Location validation failed: \(locationError.localizedDescription)", category: AppLogger.location)
             }
             return false
         }
@@ -270,9 +270,9 @@ class LocationManager: NSObject, ObservableObject {
         // Save context
         do {
             try context.save()
-            AppLogger.debug("Recorded location: \(location.coordinate.latitude), \(location.coordinate.longitude)", category: .location)
+            AppLogger.debug("Recorded location: \(location.coordinate.latitude), \(location.coordinate.longitude)", category: AppLogger.location)
         } catch {
-            AppLogger.error("Failed to save location point", error: error, category: .data)
+            AppLogger.error("Failed to save location point", error: error, category: AppLogger.data)
         }
     }
 }
@@ -295,21 +295,21 @@ extension LocationManager: CLLocationManagerDelegate {
     }
     
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        AppLogger.error("Location manager failed", error: error, category: .location)
+        AppLogger.error("Location manager failed", error: error, category: AppLogger.location)
         
         if let clError = error as? CLError {
             Task { @MainActor in
                 switch clError.code {
                 case .denied:
                     self.lastError = .permissionDenied
-                    AppLogger.warning("Location access denied", category: .location)
+                    AppLogger.warning("Location access denied", category: AppLogger.location)
                 case .locationUnknown:
                     self.lastError = .locationUnavailable
-                    AppLogger.warning("Location unknown", category: .location)
+                    AppLogger.warning("Location unknown", category: AppLogger.location)
                 case .network:
-                    AppLogger.warning("Network error while getting location", category: .location)
+                    AppLogger.warning("Network error while getting location", category: AppLogger.location)
                 default:
-                    AppLogger.error("Other location error: \(clError.localizedDescription)", category: .location)
+                    AppLogger.error("Other location error: \(clError.localizedDescription)", category: AppLogger.location)
                 }
             }
         }
@@ -321,37 +321,37 @@ extension LocationManager: CLLocationManagerDelegate {
             
             switch status {
             case .notDetermined:
-                AppLogger.info("Location authorization not determined", category: .location)
+                AppLogger.info("Location authorization not determined", category: AppLogger.location)
             case .denied, .restricted:
-                AppLogger.warning("Location authorization denied/restricted", category: .location)
+                AppLogger.warning("Location authorization denied/restricted", category: AppLogger.location)
                 self.lastError = status == .denied ? .permissionDenied : .permissionRestricted
                 self.stopTracking()
             case .authorizedWhenInUse:
-                AppLogger.info("Location authorized: When In Use", category: .location)
+                AppLogger.info("Location authorized: When In Use", category: AppLogger.location)
                 if self.isTracking {
-                    AppLogger.warning("Currently tracking but only have 'When In Use' permission", category: .location)
+                    AppLogger.warning("Currently tracking but only have 'When In Use' permission", category: AppLogger.location)
                 }
                 self.startUpdating()
             case .authorizedAlways:
-                AppLogger.info("Location authorized: Always", category: .location)
+                AppLogger.info("Location authorized: Always", category: AppLogger.location)
                 if self.isTracking {
                     // Re-enable background location updates if we're currently tracking
                     self.locationManager.allowsBackgroundLocationUpdates = true
-                    AppLogger.info("Background location updates re-enabled", category: .location)
+                    AppLogger.info("Background location updates re-enabled", category: AppLogger.location)
                 }
                 self.startUpdating()
             @unknown default:
-                AppLogger.warning("Unknown location authorization status", category: .location)
+                AppLogger.warning("Unknown location authorization status", category: AppLogger.location)
             }
         }
     }
     
     nonisolated func locationManagerDidPauseLocationUpdates(_ manager: CLLocationManager) {
-        AppLogger.info("Location updates paused by system", category: .location)
+        AppLogger.info("Location updates paused by system", category: AppLogger.location)
     }
     
     nonisolated func locationManagerDidResumeLocationUpdates(_ manager: CLLocationManager) {
-        AppLogger.info("Location updates resumed by system", category: .location)
+        AppLogger.info("Location updates resumed by system", category: AppLogger.location)
     }
 }
 
