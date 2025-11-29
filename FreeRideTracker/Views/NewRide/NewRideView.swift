@@ -134,7 +134,7 @@ struct NewRideView: View {
         if !customTitle.isEmpty {
             let trimmedTitle = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmedTitle.count > AppConstants.Validation.maxTitleLength {
-                AppLogger.warning("Custom title exceeds maximum length", category: .ui)
+                AppLogger.warning("Custom title exceeds maximum length", category: AppLogger.ui)
                 customTitle = String(trimmedTitle.prefix(AppConstants.Validation.maxTitleLength))
             }
         }
@@ -159,19 +159,18 @@ struct NewRideView: View {
         
         switch locationManager.authorizationStatus {
         case .notDetermined:
-            locationManager.requestLocationPermission { [weak self] granted in
+            locationManager.requestLocationPermission { granted in
                 DispatchQueue.main.async {
-                    guard let self = self else { return }
                     if granted {
                         // After first grant, we might still be 'When In Use'
                         if locationManager.authorizationStatus == .authorizedWhenInUse {
-                            self.showingBackgroundPermissionAlert = true
+                            showingBackgroundPermissionAlert = true
                         } else {
-                            self.createAndStartRide()
+                            createAndStartRide()
                         }
                     } else {
-                        self.showingLocationPermissionAlert = true
-                        self.isStartingRide = false
+                        showingLocationPermissionAlert = true
+                        isStartingRide = false
                     }
                 }
             }
@@ -180,13 +179,12 @@ struct NewRideView: View {
             isStartingRide = false
         case .authorizedWhenInUse:
             // Already authorized for 'When In Use', now ask for 'Always'
-            locationManager.requestLocationPermission { [weak self] _ in
+            locationManager.requestLocationPermission { _ in
                 DispatchQueue.main.async {
-                    guard let self = self else { return }
                     if locationManager.authorizationStatus == .authorizedAlways {
-                        self.createAndStartRide()
+                        createAndStartRide()
                     } else {
-                        self.showingBackgroundPermissionAlert = true
+                        showingBackgroundPermissionAlert = true
                     }
                 }
             }

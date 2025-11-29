@@ -7,6 +7,7 @@
 
 import Foundation
 import UserNotifications
+import UIKit
 
 class NotificationManager {
     static let shared = NotificationManager()

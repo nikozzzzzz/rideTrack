@@ -38,10 +38,10 @@ class LocationManager: NSObject, ObservableObject {
     }
     
     deinit {
-        // Cleanup resources
-        stopTracking()
+        // Cleanup resources - don't call @MainActor methods from deinit
+        locationManager.stopUpdatingLocation()
         locationManager.delegate = nil
-        AppLogger.debug("LocationManager deallocated", category: AppLogger.location)
+        AppLogger.info("LocationManager deinitialized", category: AppLogger.location)
     }
     
     private func setupLocationManager() {
